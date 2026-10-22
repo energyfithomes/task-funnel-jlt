@@ -7,27 +7,201 @@
 <link rel="manifest" href="manifest.webmanifest">
 <title>Task Funnel</title>
 <style>
-*{box-sizing:border-box}body{margin:0;background:#f7f7f7;font-family:Arial,sans-serif;color:#111}main{max-width:520px;margin:auto;padding:16px 14px 32px}h1{font-size:24px;margin:2px 0 14px}.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}button,.pick{border:0;border-radius:14px;padding:16px 12px;font-size:17px;font-weight:700;background:#e7e7e7;color:#111;cursor:pointer}.mode.active{background:#111;color:#fff}.source.active{outline:3px solid #111;background:#fff}textarea,input[type=text]{width:100%;border:1px solid #ddd;border-radius:14px;background:#fff;padding:14px;font:inherit;font-size:18px}textarea{min-height:120px;resize:vertical;margin-top:12px}.section{margin-top:12px}.save{width:100%;background:#111;color:#fff;font-size:19px;padding:18px;margin-top:14px}.save:disabled{opacity:.5}.hint,.fileline{font-size:13px;color:#666;margin-top:7px}.fileline{word-break:break-all}input[type=file]{display:none}.status{min-height:22px;text-align:center;margin-top:10px;font-size:14px}
+*{box-sizing:border-box}
+body{margin:0;background:#f7f7f7;font-family:Arial,sans-serif;color:#111}
+main{max-width:520px;margin:auto;padding:16px 14px 32px}
+h1{font-size:24px;margin:2px 0 14px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+button,.pick{border:0;border-radius:14px;padding:16px 12px;font-size:17px;font-weight:700;background:#e7e7e7;color:#111;cursor:pointer}
+.mode.active{background:#111;color:#fff}
+.action.active{outline:3px solid #111;background:#fff}
+textarea,input[type=text],input[type=datetime-local]{width:100%;border:1px solid #ddd;border-radius:14px;background:#fff;padding:14px;font:inherit;font-size:18px}
+textarea{min-height:120px;resize:vertical;margin-top:12px}
+.section{margin-top:12px}
+.save{width:100%;background:#111;color:#fff;font-size:19px;padding:18px;margin-top:14px}
+.save:disabled{opacity:.5}
+.hint,.fileline,.small{font-size:13px;color:#666;margin-top:7px}
+.fileline{word-break:break-all}
+input[type=file]{display:none}
+.status{min-height:22px;text-align:center;margin-top:10px;font-size:14px}
+.pastezone{margin-top:12px;border:2px dashed #999;border-radius:14px;background:#fff;padding:18px;text-align:center;font-size:17px;font-weight:700}
+.pastezone.ready{border-color:#111;background:#f0f0f0}
+.label{font-size:13px;color:#555;margin:0 0 6px 2px}
 </style>
 </head>
 <body><main>
 <h1>Task Funnel</h1>
-<div class="g2"><button id="now" class="mode" onclick="setMode('NOW')">NOW</button><button id="later" class="mode active" onclick="setMode('LATER')">LATER</button></div>
-<div class="g3"><button class="source active" data-source="Typed" onclick="setSource(this)">⌨️ Type</button><button class="source" data-source="Photo" onclick="setSource(this);chooseFile('image/*')">📷 Photo</button><button class="source" data-source="Voice Recorder" onclick="setSource(this);chooseFile('audio/*,.m4a,.mp3,.wav,.aac,.ogg')">🎙️ Voice</button></div>
+
+<div class="g2">
+  <button id="now" class="mode" onclick="setMode('NOW')">NOW</button>
+  <button id="later" class="mode active" onclick="setMode('LATER')">LATER</button>
+</div>
+
 <textarea id="raw" placeholder="What do you need to remember or do?"></textarea>
-<div class="section"><label class="pick" for="file">Attach screenshot / file</label><input id="file" type="file"><div id="fileline" class="fileline"></div></div>
-<div class="section"><input id="link" type="text" inputmode="url" placeholder="Optional link"></div>
+
+<div id="pastezone" class="pastezone">
+  📋 Paste screenshot
+  <div class="small">Press Ctrl+V anywhere on this page</div>
+</div>
+
+<div class="actions">
+  <button class="action" id="photoBtn" onclick="chooseFile('image/*')">📷 Choose Photo</button>
+  <button class="action" id="voiceBtn" onclick="chooseFile('audio/*,.m4a,.mp3,.wav,.aac,.ogg')">🎙️ Choose Voice</button>
+</div>
+
+<div class="section">
+  <label class="pick" for="file">Attach other file</label>
+  <input id="file" type="file">
+  <div id="fileline" class="fileline"></div>
+</div>
+
+<div class="section">
+  <input id="link" type="text" inputmode="url" placeholder="Optional link">
+</div>
+
+<div class="section">
+  <div class="label">Schedule (optional)</div>
+  <input id="schedule" type="datetime-local" aria-label="Schedule date and time">
+</div>
+
 <button id="save" class="save" onclick="saveCapture()">SAVE</button>
-<div class="hint">Capture only. Categorize later.</div>
+<div class="hint">Capture now. Categorize later.</div>
 <div id="status" class="status"></div>
 </main>
+
 <script>
-const BACKEND_URL="https://script.google.com/macros/s/AKfycbzxAf3uHkFYFzWY8uwmLy8dvJmu5aXjeN4afAoq9mar98iMgXDjUhLqadGn4eBHm9lqhA/exec";let mode="LATER",sourceType="Typed";
-function setMode(v){mode=v;document.getElementById('now').classList.toggle('active',v==='NOW');document.getElementById('later').classList.toggle('active',v==='LATER')}
-function setSource(el){sourceType=el.dataset.source;document.querySelectorAll('.source').forEach(x=>x.classList.remove('active'));el.classList.add('active')}
-function chooseFile(a){const f=document.getElementById('file');f.accept=a;f.click()}
-document.getElementById('file').addEventListener('change',()=>{const input=document.getElementById('file');const f=input.files[0];document.getElementById('fileline').textContent=f?f.name:'';if(!f)return;if(f.type.startsWith('audio/'))sourceType='Voice Recorder';else if(f.type.startsWith('image/'))sourceType='Photo';document.querySelectorAll('.source').forEach(x=>x.classList.toggle('active',x.dataset.source===sourceType))});
-function b64(f){return new Promise((ok,no)=>{if(!f)return ok(null);const r=new FileReader();r.onload=()=>ok(r.result);r.onerror=no;r.readAsDataURL(f)})}
-async function saveCapture(){const raw=document.getElementById('raw').value.trim(),link=document.getElementById('link').value.trim(),file=document.getElementById('file'),f=file.files[0]||null,status=document.getElementById('status'),save=document.getElementById('save');if(!raw&&!link&&!f){status.textContent='Add text, a link, or a file.';return}if(BACKEND_URL.includes('PASTE_')){status.textContent='Backend URL not configured yet.';return}save.disabled=true;status.textContent='Saving…';try{const payload={mode,sourceType,rawCapture:raw,link,fileName:f?f.name:'',fileMime:f?f.type:'',fileData:await b64(f)};const res=await fetch(BACKEND_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload)});const d=await res.json();if(!d.ok)throw new Error(d.error||'Save failed');document.getElementById('raw').value='';document.getElementById('link').value='';file.value='';document.getElementById('fileline').textContent='';status.textContent=`Saved ${d.captureId} → ${d.mode}`;navigator.vibrate?.(40)}catch(e){status.textContent='Save failed: '+e.message}finally{save.disabled=false}}
-if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
-</script></body></html>
+const BACKEND_URL="https://script.google.com/macros/s/AKfycbzxAf3uHkFYFzWY8uwmLy8dvJmu5aXjeN4afAoq9mar98iMgXDjUhLqadGn4eBHm9lqhA/exec";
+let mode="LATER",sourceType="Typed",pastedFile=null;
+
+function setMode(v){
+  mode=v;
+  document.getElementById('now').classList.toggle('active',v==='NOW');
+  document.getElementById('later').classList.toggle('active',v==='LATER');
+}
+function chooseFile(a){
+  const f=document.getElementById('file');
+  f.accept=a;
+  f.click();
+}
+function clearActionButtons(){
+  document.getElementById('photoBtn').classList.remove('active');
+  document.getElementById('voiceBtn').classList.remove('active');
+}
+document.getElementById('file').addEventListener('change',()=>{
+  const input=document.getElementById('file');
+  const f=input.files[0];
+  document.getElementById('fileline').textContent=f?f.name:'';
+  clearActionButtons();
+  if(!f)return;
+  pastedFile=null;
+  if(f.type.startsWith('audio/')){
+    sourceType='Voice Recorder';
+    document.getElementById('voiceBtn').classList.add('active');
+  }else if(f.type.startsWith('image/')){
+    sourceType='Photo';
+    document.getElementById('photoBtn').classList.add('active');
+  }else{
+    sourceType='Other';
+  }
+});
+
+function b64(f){
+  return new Promise((ok,no)=>{
+    if(!f)return ok(null);
+    const r=new FileReader();
+    r.onload=()=>ok(r.result);
+    r.onerror=no;
+    r.readAsDataURL(f);
+  });
+}
+
+function handleClipboardImage(e){
+  const items=[...(e.clipboardData?.items||[])];
+  const img=items.find(i=>i.kind==='file'&&i.type.startsWith('image/'));
+  if(!img)return false;
+
+  e.preventDefault();
+  const blob=img.getAsFile();
+  const stamp=new Date().toISOString().replace(/[:.]/g,'-');
+  pastedFile=new File([blob],`clipboard-${stamp}.png`,{type:blob.type||'image/png'});
+  sourceType='Photo';
+
+  clearActionButtons();
+  document.getElementById('photoBtn').classList.add('active');
+  document.getElementById('fileline').textContent='Clipboard screenshot ready';
+  const p=document.getElementById('pastezone');
+  p.classList.add('ready');
+  p.innerHTML='✅ Screenshot pasted<div class="small">Ready to save</div>';
+  document.getElementById('status').textContent='';
+  return true;
+}
+
+document.addEventListener('paste',handleClipboardImage);
+
+async function saveCapture(){
+  const raw=document.getElementById('raw').value.trim();
+  const link=document.getElementById('link').value.trim();
+  const scheduleDateTime=document.getElementById('schedule').value;
+  const file=document.getElementById('file');
+  const f=file.files[0]||pastedFile||null;
+  const status=document.getElementById('status');
+  const save=document.getElementById('save');
+
+  if(!raw&&!link&&!f){
+    status.textContent='Add text, a link, or paste/attach something.';
+    return;
+  }
+
+  save.disabled=true;
+  status.textContent='Saving…';
+
+  try{
+    const rawWithSchedule=raw+(scheduleDateTime?`\nSchedule: ${scheduleDateTime}`:'');
+    const payload={
+      mode,
+      sourceType,
+      rawCapture:rawWithSchedule,
+      link,
+      scheduleDateTime,
+      fileName:f?f.name:'',
+      fileMime:f?f.type:'',
+      fileData:await b64(f)
+    };
+
+    const res=await fetch(BACKEND_URL,{
+      method:'POST',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify(payload)
+    });
+
+    const d=await res.json();
+    if(!d.ok)throw new Error(d.error||'Save failed');
+
+    document.getElementById('raw').value='';
+    document.getElementById('link').value='';
+    document.getElementById('schedule').value='';
+    file.value='';
+    pastedFile=null;
+    document.getElementById('fileline').textContent='';
+    clearActionButtons();
+
+    const p=document.getElementById('pastezone');
+    p.classList.remove('ready');
+    p.innerHTML='📋 Paste screenshot<div class="small">Press Ctrl+V anywhere on this page</div>';
+
+    status.textContent=`Saved ${d.captureId} → ${d.mode}`;
+    navigator.vibrate?.(40);
+  }catch(e){
+    status.textContent='Save failed: '+e.message;
+  }finally{
+    save.disabled=false;
+  }
+}
+
+if('serviceWorker'in navigator){
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+}
+</script>
+</body>
+</html>
